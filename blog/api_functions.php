@@ -1,36 +1,13 @@
 <?php
 require_once './includes.php';
+require_once '../db/db.php';
 
-function create_post($connect, $user_id, $title, $content) {
-    if(!is_userid_valid($connect, $user_id)) {
-        die(json_encode([
-            'status' => 404,
-            'message' => 'Invalid UserID'
-        ]));
-    }
-
-    $stmt = mysqli_stmt_init($connect);
-    $sql = "INSERT INTO blog.posts
-            (`author_id`, `title`, `content`) 
-            VALUES 
-            (?, ?, ?);";
-            
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
-
-    mysqli_stmt_bind_param($stmt, 'iss', $user_id, $title, $content);
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
-
-    // Reading the post that created
-    $result = mysqli_query($connect, "SELECT * FROM blog.posts WHERE id = LAST_INSERT_ID();");
-
-    $row = mysqli_fetch_assoc($result);
+function create_post($connect, $title, $content) {
+    $result = create_post_execute($connect, $title, $content);
     
     die(json_encode([
         'status' => 200,
-        'post' => $row
+        'post' => $result
     ]));
     
 }
@@ -69,39 +46,20 @@ function update_post($connect, $post_id, $title, $content) {
         ]));
     }
 
+    $user_id = $_SESSION['id'];
+
     // First query - updating the post
-    $stmt = mysqli_stmt_init($connect);
-    $sql = "UPDATE blog.posts
-            SET title = ?, content = ?
-            WHERE id = ?;";
+    update_post_execute($connect, $post_id, $title, $content, $user_id);
 
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
+    // Second query - Check premission and return the post
+    $data = check_premission_and_result($connect, $post_id, $user_id);
+    $status_code = $data['status_code'];
+    $post = $data['post'];
 
-    mysqli_stmt_bind_param($stmt, 'ssi', $title, $content, $post_id);
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
 
-    // Second query - reading the post that recently updated
-    $stmt = mysqli_stmt_init($connect);
-    $sql = "SELECT * FROM blog.posts
-            WHERE id = ?";
-
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
-
-    mysqli_stmt_bind_param($stmt, 'i', $post_id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    mysqli_stmt_close($stmt);
-
-    $row = mysqli_fetch_assoc($result);
-    
     die(json_encode([
-        'status' => 200,
-        'post' => $row
+        'status' => $status_code,
+        'post' => $post
     ]));
 }
 
@@ -113,39 +71,19 @@ function delete_post($connect, $post_id) {
         ]));
     }
 
-    $stmt = mysqli_stmt_init($connect);
-    // Soft deleting the post
-    $sql = "UPDATE blog.posts
-            SET deleted = TRUE, deleted_at = CURRENT_TIMESTAMP
-            WHERE id = ?;";
+    $user_id = $_SESSION['id'];
 
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
+    soft_delete_execute($connect, $post_id, $user_id);
 
-    mysqli_stmt_bind_param($stmt, 'i', $post_id);
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
+    // Second query - Check premission and return the post
+    $data = check_premission_and_result($connect, $post_id, $user_id);
+    $status_code = $data['status_code'];
+    $post = $data['post'];
 
-    // Second query - reading the post that recently updated
-    $stmt = mysqli_stmt_init($connect);
-    $sql = "SELECT * FROM blog.posts
-            WHERE id = ?";
 
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
-    
-    mysqli_stmt_bind_param($stmt, 'i', $post_id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    mysqli_stmt_close($stmt);
-
-    $row = mysqli_fetch_assoc($result);
-    
     die(json_encode([
-        'status' => 200,
-        'post' => $row
+        'status' => $status_code,
+        'post' => $post
     ]));
 }
 
@@ -157,46 +95,26 @@ function recover_deleted_post($connect, $post_id) {
         ]));
     }
 
-    $stmt = mysqli_stmt_init($connect);
-    // Soft deleting the post
-    $sql = "UPDATE blog.posts
-            SET deleted = FALSE, deleted_at = NULL
-            WHERE id = ?;";
+    $user_id = $_SESSION['id'];
 
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
-
-    mysqli_stmt_bind_param($stmt, 'i', $post_id);
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
+    post_recovery_execute($connect, $post_id, $user_id);
 
     // Second query - reading the post that recently updated
-    $stmt = mysqli_stmt_init($connect);
-    $sql = "SELECT * FROM blog.posts
-            WHERE id = ?";
+    $data = check_premission_and_result($connect, $post_id, $user_id);
+    $status_code = $data['status_code'];
+    $post = $data['post'];
 
-    if(!mysqli_stmt_prepare($stmt, $sql)) {
-        die('stmt error');
-    }
-    
-    mysqli_stmt_bind_param($stmt, 'i', $post_id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    mysqli_stmt_close($stmt);
 
-    $row = mysqli_fetch_assoc($result);
-    
     die(json_encode([
-        'status' => 200,
-        'post' => $row
+        'status' => $status_code,
+        'post' => $post
     ]));
 }
 
 function read_active_posts($connect) {
     $stmt = mysqli_stmt_init($connect);
     $sql = "SELECT * FROM blog.posts
-    WHERE deleted != 1;";
+            WHERE deleted != 1;";
 
     if(!mysqli_stmt_prepare($stmt, $sql)) {
         die('stmt error');
@@ -205,8 +123,6 @@ function read_active_posts($connect) {
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     mysqli_stmt_close($stmt);
-
-
     
     $data = [];
     while($row = mysqli_fetch_assoc($result)) {
