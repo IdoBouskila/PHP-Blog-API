@@ -1,8 +1,14 @@
 <?php
 
+function is_params_valid_for_create() {
+    if( ! (array_key_exists('title', $_GET) && array_key_exists('content', $_GET)) ) {
+        return false;
+    }
 
+    return true;
+}
 
-function is_params_valid_create_update() {
+function is_params_valid_for_update() {
     if( ! (array_key_exists('id', $_GET) && array_key_exists('title', $_GET) && array_key_exists('content', $_GET)) ) {
         return false;
     }
