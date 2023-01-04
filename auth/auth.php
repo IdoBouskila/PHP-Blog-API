@@ -34,9 +34,6 @@ function sign_in() {
         die();
     }
 
-    // remember the username login by saving the username on SESSION and redirect to Index.php
-    $_SESSION['user'] = $username;
-
     header('location: ./index.php');
     die();
 }

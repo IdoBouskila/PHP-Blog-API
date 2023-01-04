@@ -90,5 +90,8 @@ function is_user_verify($connect, $username, $plaintext_password) {
         return false;
     }
 
+    // remember the username login by saving the id on SESSION
+
+    $_SESSION['id'] = $row['id'];
     return true;
 }
