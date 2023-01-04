@@ -26,9 +26,9 @@ function is_user_exists($connect, $email, $username) {
     mysqli_stmt_bind_param($stmt, 'ss', $email, $username);
     mysqli_stmt_execute($stmt);
 
-    $resultData = mysqli_stmt_get_result($stmt);
+    $result = mysqli_stmt_get_result($stmt);
 
-    if(mysqli_fetch_assoc($resultData)) {
+    if(mysqli_fetch_assoc($result)) {
         return true;
     }
 
@@ -78,10 +78,10 @@ function is_user_verify($connect, $username, $plaintext_password) {
     mysqli_stmt_bind_param($stmt, 's', $username);
     mysqli_stmt_execute($stmt);
 
-    $resultData = mysqli_stmt_get_result($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     mysqli_stmt_close($stmt);
 
-    if(!$row = mysqli_fetch_assoc($resultData)) {
+    if(!$row = mysqli_fetch_assoc($result)) {
         return false;
     }
     
