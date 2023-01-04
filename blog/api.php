@@ -2,8 +2,18 @@
 require_once '../db/config.php';
 require_once './api_functions.php';
 
+session_start();
+
+
 define('CONNECT', $connect);
 header("Content-Type: application/json");
+
+if(!isset($_SESSION['id'])) {
+    json_encode([
+        'status' => 401,
+        'message' => 'Not allowed, you must be logged in!'
+    ]);
+}
 
 if(!isset($_GET['action'])) {
     die(json_encode([
@@ -18,18 +28,17 @@ $action = $_GET['action'];
 switch ($action) {
     case 'create':
         // Check if all the parameters passed correctly
-        if(!is_params_valid_create_update()) {
+        if(!is_params_valid_for_create()) {
             die(json_encode([
                 'status' => 400,
                 'message' => 'Invalid parameters'
             ]));
         }
 
-        $user_id = $_GET['id'];
         $title = $_GET['title'];
         $content = $_GET['content'];
 
-        create_post(CONNECT, $user_id, $title, $content);
+        create_post(CONNECT, $title, $content);
         break;
     
     case 'read':
@@ -47,7 +56,7 @@ switch ($action) {
 
     case 'update':
         // Check if all the parameters passed correctly
-        if( !is_params_valid_create_update()) {
+        if( !is_params_valid_for_update()) {
             die(json_encode([
                 'status' => 400,
                 'message' => 'Invalid parameters'
@@ -58,7 +67,7 @@ switch ($action) {
         $title = $_GET['title'];
         $content = $_GET['content'];
 
-        update_post(CONNECT, $user_id, $title, $content);
+        update_post(CONNECT, $post_id, $title, $content);
         break;
 
     case 'delete':
